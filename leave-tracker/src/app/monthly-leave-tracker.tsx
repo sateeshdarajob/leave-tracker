@@ -117,7 +117,7 @@ export default function MonthlyLeaveDatesTracker() {
   const getLeaveDatesForMonth = (member: TeamMember, monthIndex: number) => {
     return member.leaveDates
       .filter((date) => date.getMonth() === monthIndex && date.getFullYear() === currentYear)
-      .sort((a, b) => a.getTime() - b.getTime()) // Sort dates in ascending order
+      .sort((a, b) => a.getTime() - b.getTime())
       .map((date) => format(date, "d"))
       .join(", ");
   };
@@ -183,112 +183,112 @@ export default function MonthlyLeaveDatesTracker() {
               </TableHeader>
               <TableBody>
                 {teamMembers.length > 0 ? (
-                  teamMembers.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell className="font-medium sticky left-0 bg-white">
-                        {member.isEditing ? (
-                          <Input
-                            value={member.editName}
-                            onChange={(e) => updateEditField(member.id, "editName", e.target.value)}
-                          />
-                        ) : (
-                          member.name
-                        )}
-                      </TableCell>
-                      {MONTHS.map((_, monthIndex) => {
-                        if (member.isEditing) {
-                          // Only show calendar if there are leave dates for this month
-                          const monthDates =
-                            member.editLeaveDates?.filter(
-                              (date) =>
-                                date.getMonth() === monthIndex &&
-                                date.getFullYear() === currentYear
-                            ) || [];
-                          if (monthDates.length > 0) {
-                            return (
-                              <TableCell key={monthIndex} className="text-center">
-                                <Calendar
-                                  mode="multiple"
-                                  selected={monthDates}
-                                  onSelect={(dates) => {
-                                    // Merge selected dates for this month with other months
-                                    const otherMonths =
-                                      member.editLeaveDates?.filter(
-                                        (date) =>
-                                          date.getMonth() !== monthIndex ||
-                                          date.getFullYear() !== currentYear
-                                      ) || [];
-                                    const newDates = [
-                                      ...otherMonths,
-                                      ...(Array.isArray(dates) ? dates : dates ? [dates] : [])
-                                    ];
-                                    updateEditField(member.id, "editLeaveDates", newDates);
-                                  }}
-                                  className="rounded-md border mt-1"
-                                />
-                              </TableCell>
-                            );
-                          } else {
-                            // Show empty cell if no dates for this month
-                            return (
-                              <TableCell key={monthIndex} className="text-center">
-                                -
-                              </TableCell>
-                            );
-                          }
-                        }
-                        // Not editing: show leave dates as before
-                        const leaveDates = getLeaveDatesForMonth(member, monthIndex);
-                        return (
-                          <TableCell
-                            key={monthIndex}
-                            className={`text-center ${leaveDates ? "bg-yellow-50" : ""}`}
-                          >
-                            {leaveDates || "-"}
-                          </TableCell>
-                        );
-                      })}
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                  [...teamMembers]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium sticky left-0 bg-white">
                           {member.isEditing ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => saveEditMember(member.id)}
-                              >
-                                <Save className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => cancelEditMember(member.id)}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </>
+                            <Input
+                              value={member.editName}
+                              onChange={(e) => updateEditField(member.id, "editName", e.target.value)}
+                            />
                           ) : (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => startEditMember(member.id)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeTeamMember(member.id)}
-                              >
-                                <Trash className="w-4 h-4 text-red-500" />
-                              </Button>
-                            </>
+                            member.name
                           )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        {MONTHS.map((_, monthIndex) => {
+                          if (member.isEditing) {
+                            // Only show calendar if there are leave dates for this month
+                            const monthDates =
+                              member.editLeaveDates?.filter(
+                                (date) =>
+                                  date.getMonth() === monthIndex &&
+                                  date.getFullYear() === currentYear
+                              ) || [];
+                            if (monthDates.length > 0) {
+                              return (
+                                <TableCell key={monthIndex} className="text-center">
+                                  <Calendar
+                                    mode="multiple"
+                                    selected={monthDates}
+                                    onSelect={(dates) => {
+                                      // Merge selected dates for this month with other months
+                                      const otherMonths =
+                                        member.editLeaveDates?.filter(
+                                          (date) =>
+                                            date.getMonth() !== monthIndex ||
+                                            date.getFullYear() !== currentYear
+                                        ) || [];
+                                      const newDates = [
+                                        ...otherMonths,
+                                        ...(Array.isArray(dates) ? dates : dates ? [dates] : [])
+                                      ];
+                                      updateEditField(member.id, "editLeaveDates", newDates);
+                                    }}
+                                    className="rounded-md border mt-1"
+                                  />
+                                </TableCell>
+                              );
+                            } else {
+                              return (
+                                <TableCell key={monthIndex} className="text-center">
+                                  -
+                                </TableCell>
+                              );
+                            }
+                          }
+                          const leaveDates = getLeaveDatesForMonth(member, monthIndex);
+                          return (
+                            <TableCell
+                              key={monthIndex}
+                              className={`text-center ${leaveDates ? "bg-yellow-50" : ""}`}
+                            >
+                              {leaveDates || "-"}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {member.isEditing ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => saveEditMember(member.id)}
+                                >
+                                  <Save className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => cancelEditMember(member.id)}
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => startEditMember(member.id)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeTeamMember(member.id)}
+                                >
+                                  <Trash className="w-4 h-4 text-red-500" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={13} className="text-center py-8 text-gray-500">
