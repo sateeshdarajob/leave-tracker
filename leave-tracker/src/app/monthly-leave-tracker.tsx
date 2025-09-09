@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Calendar } from "../components/ui/calendar";
@@ -8,6 +8,11 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from ".
 import { Plus, Trash, Edit, Save, X } from "lucide-react";
 import { Label } from "../components/ui/label";
 import { format } from "date-fns";
+// If you have a popover component in another location, update the path accordingly.
+// For example, if using Radix UI:
+import { Popover, PopoverTrigger, PopoverContent } from "../components/ui/popover";
+// Or, if you have the component elsewhere in your project, update the relative path:
+// import { Popover, PopoverTrigger, PopoverContent } from "../../components/ui/popover";
 
 interface TeamMember {
   id: string;
@@ -29,6 +34,7 @@ export default function MonthlyLeaveDatesTracker() {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [newMemberName, setNewMemberName] = useState("");
   const [newLeaveDates, setNewLeaveDates] = useState<Date[]>([]);
+  const currentMonthRef = useRef<HTMLTableCellElement | null>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -50,6 +56,13 @@ export default function MonthlyLeaveDatesTracker() {
   useEffect(() => {
     localStorage.setItem("teamMembers", JSON.stringify(teamMembers));
   }, [teamMembers]);
+
+  useEffect(() => {
+    // Scroll the current month column into view on mount
+    if (currentMonthRef.current) {
+      currentMonthRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, []);
 
   const addTeamMember = () => {
     if (newMemberName.trim() && newLeaveDates.length > 0) {
@@ -123,21 +136,17 @@ export default function MonthlyLeaveDatesTracker() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      <Card className="max-w-full mx-auto overflow-x-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>Monthly Leave Dates Tracker - {currentYear}</span>
-            </div>
+    <div className="min-h-screen bg-gray-50 p-0 m-0 w-full">
+      <Card className="w-full h-full overflow-x-auto shadow-xl rounded-none bg-white border-0">
+        <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-500 p-6 rounded-none">
+          <CardTitle className="text-white text-2xl font-bold tracking-wide">
+            Monthly Leave Dates Tracker - {currentYear}
           </CardTitle>
         </CardHeader>
-
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 w-full">
           {/* Add New Team Member Section */}
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <h3 className="text-lg font-semibold mb-4">Add Team Member</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-blue-50 p-4 rounded-none border-b border-blue-200 shadow-sm w-full">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
               <div>
                 <Label htmlFor="memberName">Name</Label>
                 <Input
@@ -145,21 +154,34 @@ export default function MonthlyLeaveDatesTracker() {
                   value={newMemberName}
                   onChange={(e) => setNewMemberName(e.target.value)}
                   placeholder="Enter team member name"
-                  onKeyDown={(e) => e.key === "Enter" && addTeamMember()}
                   className="mt-1"
                 />
               </div>
               <div>
                 <Label>Leave Dates</Label>
-                <Calendar
-                  mode="multiple"
-                  selected={newLeaveDates}
-                  onSelect={setNewLeaveDates}
-                  className="rounded-md border mt-1"
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left"
+                    >
+                      {newLeaveDates.length > 0
+                        ? newLeaveDates.map(date => format(date, "MMM d")).join(", ")
+                        : "Select leave dates"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="multiple"
+                      selected={newLeaveDates}
+                      onSelect={setNewLeaveDates}
+                      className="rounded-md border mt-1"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="flex items-end">
-                <Button onClick={addTeamMember} className="w-full">
+                <Button onClick={addTeamMember} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Member
                 </Button>
@@ -169,139 +191,140 @@ export default function MonthlyLeaveDatesTracker() {
 
           {/* Team Members Table */}
           <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[200px] sticky left-0 bg-white">Team Member</TableHead>
-                  {MONTHS.map((month, index) => (
-                    <TableHead key={month} className="text-center min-w-[120px]">
-                      {month}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamMembers.length > 0 ? (
-                  [...teamMembers]
-                    .sort((a, b) => a.name.localeCompare(b.name))
-                    .map((member) => (
-                      <TableRow key={member.id}>
-                        <TableCell className="font-medium sticky left-0 bg-white">
-                          {member.isEditing ? (
-                            <Input
-                              value={member.editName}
-                              onChange={(e) => updateEditField(member.id, "editName", e.target.value)}
-                            />
-                          ) : (
-                            member.name
-                          )}
-                        </TableCell>
-                        {MONTHS.map((_, monthIndex) => {
-                          if (member.isEditing) {
-                            // Only show calendar if there are leave dates for this month
-                            const monthDates =
-                              member.editLeaveDates?.filter(
-                                (date) =>
-                                  date.getMonth() === monthIndex &&
-                                  date.getFullYear() === currentYear
-                              ) || [];
-                            if (monthDates.length > 0) {
-                              return (
-                                <TableCell key={monthIndex} className="text-center">
-                                  <Calendar
-                                    mode="multiple"
-                                    selected={monthDates}
-                                    onSelect={(dates) => {
-                                      // Merge selected dates for this month with other months
-                                      const otherMonths =
-                                        member.editLeaveDates?.filter(
-                                          (date) =>
-                                            date.getMonth() !== monthIndex ||
-                                            date.getFullYear() !== currentYear
-                                        ) || [];
-                                      const newDates = [
-                                        ...otherMonths,
-                                        ...(Array.isArray(dates) ? dates : dates ? [dates] : [])
-                                      ];
-                                      updateEditField(member.id, "editLeaveDates", newDates);
-                                    }}
-                                    className="rounded-md border mt-1"
-                                  />
-                                </TableCell>
-                              );
-                            } else {
-                              return (
-                                <TableCell key={monthIndex} className="text-center">
-                                  -
-                                </TableCell>
-                              );
-                            }
-                          }
-                          const leaveDates = getLeaveDatesForMonth(member, monthIndex);
-                          return (
-                            <TableCell
-                              key={monthIndex}
-                              className={`text-center ${leaveDates ? "bg-yellow-50" : ""}`}
-                            >
-                              {leaveDates || "-"}
-                            </TableCell>
-                          );
-                        })}
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            {member.isEditing ? (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => saveEditMember(member.id)}
-                                >
-                                  <Save className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => cancelEditMember(member.id)}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => startEditMember(member.id)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => removeTeamMember(member.id)}
-                                >
-                                  <Trash className="w-4 h-4 text-red-500" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                ) : (
+            <div className="overflow-x-auto">
+              <Table className="rounded-xl overflow-hidden">
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={13} className="text-center py-8 text-gray-500">
-                      No team members added yet. Add your first team member above.
-                    </TableCell>
+                    <TableHead className="sticky left-0 bg-white z-20 w-[200px]">Team Member</TableHead>
+                    {MONTHS.map((month, index) => (
+                      <TableHead
+                        key={month}
+                        className="text-center min-w-[120px]"
+                        ref={index === new Date().getMonth() ? currentMonthRef : undefined}
+                      >
+                        {month}
+                      </TableHead>
+                    ))}
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {teamMembers.map(member => (
+                    <TableRow key={member.id}>
+                      <TableCell className="sticky left-0 bg-white z-20 font-medium">
+                        {member.isEditing ? (
+                          <Input
+                            value={member.editName}
+                            onChange={(e) => updateEditField(member.id, "editName", e.target.value)}
+                          />
+                        ) : (
+                          member.name
+                        )}
+                      </TableCell>
+                      {MONTHS.map((_, monthIndex) => {
+                        if (member.isEditing) {
+                          // Only show calendar if there are leave dates for this month
+                          const monthDates =
+                            member.editLeaveDates?.filter(
+                              (date) =>
+                                date.getMonth() === monthIndex &&
+                                date.getFullYear() === currentYear
+                            ) || [];
+                          if (monthDates.length > 0) {
+                            return (
+                              <TableCell key={monthIndex} className="text-center">
+                                <Calendar
+                                  mode="multiple"
+                                  selected={monthDates}
+                                  onSelect={(dates) => {
+                                    // Merge selected dates for this month with other months
+                                    const otherMonths =
+                                      member.editLeaveDates?.filter(
+                                        (date) =>
+                                          date.getMonth() !== monthIndex ||
+                                          date.getFullYear() !== currentYear
+                                      ) || [];
+                                    const newDates = [
+                                      ...otherMonths,
+                                      ...(Array.isArray(dates) ? dates : dates ? [dates] : [])
+                                    ];
+                                    updateEditField(member.id, "editLeaveDates", newDates);
+                                  }}
+                                  className="rounded-md border mt-1"
+                                />
+                              </TableCell>
+                            );
+                          } else {
+                            return (
+                              <TableCell key={monthIndex} className="text-center">
+                                -
+                              </TableCell>
+                            );
+                          }
+                        }
+                        const leaveDates = getLeaveDatesForMonth(member, monthIndex);
+                        return (
+                          <TableCell
+                            key={monthIndex}
+                            ref={monthIndex === new Date().getMonth() ? currentMonthRef : undefined}
+                            className={`text-center ${leaveDates ? "bg-yellow-50" : ""}`}
+                          >
+                            {leaveDates || "-"}
+                          </TableCell>
+                        );
+                      })}
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          {member.isEditing ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-green-400 text-green-600 hover:bg-green-100"
+                                onClick={() => saveEditMember(member.id)}
+                              >
+                                <Save className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-400 text-red-600 hover:bg-red-100"
+                                onClick={() => cancelEditMember(member.id)}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-blue-400 text-blue-600 hover:bg-blue-100"
+                                onClick={() => startEditMember(member.id)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-red-400 text-red-600 hover:bg-red-100"
+                                onClick={() => removeTeamMember(member.id)}
+                              >
+                                <Trash className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between bg-blue-50 rounded-none p-4 mt-4 w-full">
           <div className="text-sm text-gray-500">
             {teamMembers.length} team member{teamMembers.length !== 1 ? "s" : ""}
           </div>
